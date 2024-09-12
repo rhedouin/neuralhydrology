@@ -1,0 +1,7 @@
+New metric for test and validation: Mean absolute peak error. Modification of the existing mean absolute percentage error (MAPE).
+create mean_absolute_peak_error in neuralhydrology/evaluation/metrics.py
+
+New loss function: Peak Error Swish (PES) loss. New metric implemented from this paper https://www.sciencedirect.com/science/article/pii/S2095809922002806
+modify neuralhydrology/training/__init__.py
+create MaskedPESLoss in neuralhydrology/training/loss.py
+

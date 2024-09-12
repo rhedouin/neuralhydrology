@@ -7,6 +7,8 @@ import torch
 from neuralhydrology.training.regularization import BaseRegularization
 from neuralhydrology.utils.config import Config
 
+from scipy.special import expit
+
 ONE_OVER_2PI_SQUARED = 1.0 / np.sqrt(2.0 * np.pi)
 
 
@@ -387,6 +389,28 @@ class MaskedUMALLoss(BaseLoss):
         result = -torch.mean(torch.sum(result, dim=1))
         return result
 
+
+class MaskedPESLoss(BaseLoss):
+    """Peak Error Swish (PES) loss. New metric implemented from this paper https://www.sciencedirect.com/science/article/pii/S2095809922002806
+
+    To use this loss in a forward pass, the passed `prediction` dict must contain
+    the key ``y_hat``, and the `data` dict must contain ``y``.
+
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
+    """
+
+    def __init__(self, cfg: Config):
+        super(MaskedPESLoss, self).__init__(cfg, prediction_keys=['y_hat'], ground_truth_keys=['y'])
+
+    def _get_loss(self, prediction: Dict[str, torch.Tensor], ground_truth: Dict[str, torch.Tensor], **kwargs):
+        mask = ~torch.isnan(ground_truth['y'])
+        mse = 0.5 * torch.mean((prediction['y_hat'][mask] - ground_truth['y'][mask])**2)
+ 
+        loss = torch.mul(mse, torch.pow(1 - torch.exp(-mse), 1))
+        return loss
 
 def _get_predict_last_n(cfg: Config) -> dict:
     predict_last_n = cfg.predict_last_n
