@@ -41,7 +41,7 @@ def get_optimizer(model: torch.nn.Module, cfg: Config) -> torch.optim.Optimizer:
 def get_loss_obj(cfg: Config) -> loss.BaseLoss:
     """Get loss object, depending on the run configuration.
     
-    Currently supported are 'MSE', 'NSE', 'RMSE', 'GMMLoss', 'CMALLoss', and 'UMALLoss'.
+    Currently supported are 'MSE', 'NSE', 'RMSE', 'GMMLoss', 'CMALLoss', 'UMALLoss', 'QTLoss', 'EVLoss'.
     
     Parameters
     ----------
@@ -71,6 +71,10 @@ def get_loss_obj(cfg: Config) -> loss.BaseLoss:
         loss_obj = loss.MaskedUMALLoss(cfg)
     elif cfg.loss.lower() == "pes":
         loss_obj = loss.MaskedPESLoss(cfg)
+    elif cfg.loss.lower() == "qtloss":
+        loss_obj = loss.MaskedQTLoss(cfg)
+    elif cfg.loss.lower() == "evloss":
+        loss_obj = loss.MaskedEVLoss(cfg)
     else:
         raise NotImplementedError(f"{cfg.loss} not implemented or not linked in `get_loss()`")
 

@@ -22,7 +22,7 @@ def get_available_metrics() -> List[str]:
     """
     metrics = [
         "NSE", "MSE", "RMSE", "KGE", "Alpha-NSE", "Pearson-r", "Beta-KGE", "Beta-NSE", "FHV", "FMS", "FLV",
-        "Peak-Timing", "Missed-Peaks", "Peak-MAPE", "Peak-MAE"
+        "Peak-Timing", "Missed-Peaks", "Peak-MAPE", "Peak-MAE", "Peak-ME"
     ]
     return metrics
 
@@ -805,6 +805,55 @@ def mean_absolute_peak_error(obs: DataArray, sim: DataArray) -> float:
 
     return peak_mae
 
+def mean_peak_error(obs: DataArray, sim: DataArray) -> float:
+    r"""Calculate the mean error (MAE) for peaks
+
+    .. math:: \text{MAE}_\text{peak} = \frac{1}{P}\sum_{p=1}^{P} \left (Q_{s,p} - Q_{o,p}\right ),
+
+    where :math:`Q_{s,p}` are the simulated peaks (here, `sim`), :math:`Q_{o,p}` the observed peaks (here, `obs`) and
+    `P` is the number of peaks.
+
+    Uses scipy.find_peaks to find peaks in the observed time series. The observed peaks indices are used to subset
+    observed and simulated flows. Finally, the MAE metric is calculated as the mean absolute error of observed peak 
+    flows and corresponding simulated flows.
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed time series.
+    sim : DataArray
+        Simulated time series.
+
+    Returns
+    -------
+    float
+        Mean error (ME) for peaks.
+    """
+    # verify inputs
+    _validate_inputs(obs, sim)
+
+    # get time series with only valid observations
+    obs, sim = _mask_valid(obs, sim)
+
+    # return np.nan if there are no valid observed or simulated values
+    if obs.size == 0 or sim.size == 0:
+        return np.nan
+
+    # heuristic to get indices of peaks and their corresponding height.
+    peaks, _ = signal.find_peaks(obs.values, distance=100, prominence=np.std(obs.values))
+
+    # check if any peaks exist, otherwise return np.nan
+    if peaks.size == 0:
+        return np.nan
+
+    # subset data to only peak values
+    obs = obs[peaks].values
+    sim = sim[peaks].values
+
+    # calculate the mean absolute percentage peak error
+    peak_mae = np.sum(sim - obs) / peaks.size
+
+    return peak_mae
 
 def calculate_all_metrics(obs: DataArray,
                           sim: DataArray,
@@ -848,7 +897,9 @@ def calculate_all_metrics(obs: DataArray,
         "FMS": fdc_fms(obs, sim),
         "FLV": fdc_flv(obs, sim),
         "Peak-Timing": mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord),
-        "Peak-MAPE": mean_absolute_percentage_peak_error(obs, sim)
+        "Peak-MAPE": mean_absolute_percentage_peak_error(obs, sim), 
+        "Peak-MAE": mean_absolute_peak_error(obs, sim), 
+        "Peak-ME": mean_peak_error(obs, sim)
     }
 
     return results
@@ -921,6 +972,8 @@ def calculate_metrics(obs: DataArray,
             values["Peak-MAPE"] = mean_absolute_percentage_peak_error(obs, sim)
         elif metric.lower() == "peak-mae":
             values["Peak-MAE"] = mean_absolute_peak_error(obs, sim)
+        elif metric.lower() == "peak-me":
+            values["Peak-ME"] = mean_peak_error(obs, sim)
         else:
             raise RuntimeError(f"Unknown metric {metric}")
 

@@ -419,3 +419,74 @@ def _get_predict_last_n(cfg: Config) -> dict:
     if len(predict_last_n) == 1:
         predict_last_n = {'': list(predict_last_n.values())[0]}  # if there's only one frequency, we omit its identifier
     return predict_last_n
+
+
+class MaskedQTLoss(BaseLoss):
+    """
+    Quantile loss function.
+
+    To use this loss in a forward pass, the passed `prediction` dict must contain
+    the key ``y_hat``, and the `data` dict must contain ``y``.
+
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
+    quantile : float
+        The desired quantile to focus on (e.g., 0.95 for the 95th quantile).
+    """
+
+    def __init__(self, cfg: Config, quantile: float = 0.05):
+        super(MaskedQTLoss, self).__init__(cfg, prediction_keys=['y_hat'], ground_truth_keys=['y'])
+        assert 0 < quantile < 1, "Quantile should be between 0 and 1."
+        self.quantile = quantile
+
+    def _get_loss(self, prediction: Dict[str, torch.Tensor], ground_truth: Dict[str, torch.Tensor], **kwargs):
+        mask = ~torch.isnan(ground_truth['y'])
+        errors = ground_truth['y'][mask] - prediction['y_hat'][mask]
+        # Calcul de la quantile loss
+        loss = torch.max((self.quantile - 1) * errors, self.quantile * errors)
+        return torch.mean(loss)
+
+
+class MaskedEVLoss(BaseLoss):
+    """
+    Extreme value loss function.
+
+    To use this loss in a forward pass, the passed `prediction` dict must contain
+    the key ``y_hat``, and the `data` dict must contain ``y``.
+
+    This loss focuses on penalizing errors for values exceeding a certain threshold,
+    useful for predicting rare extreme events like floods.
+
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
+    threshold : float
+        The threshold above which an event is considered extreme.
+    """
+    
+    def __init__(self, cfg: Config, threshold: float = 50.0):
+        super(MaskedEVLoss, self).__init__(cfg, prediction_keys=['y_hat'], ground_truth_keys=['y'])
+        self.threshold = threshold
+
+    def _get_loss(self, prediction: Dict[str, torch.Tensor], ground_truth: Dict[str, torch.Tensor], **kwargs):
+        mask = ~torch.isnan(ground_truth['y'])
+        
+        # Apply the mask to select ground_truth and prediction values without NaNs
+        y_true = ground_truth['y'][mask]
+        y_pred = prediction['y_hat'][mask]
+
+        # Select indices corresponding to extreme values
+        extreme_mask = y_true > self.threshold
+        extreme_errors = (y_pred[extreme_mask] - y_true[extreme_mask]) ** 2
+        
+        # Compute loss for extreme events or set it to zero (requires_grad=True)
+        if extreme_errors.numel() > 0:
+            loss = torch.mean(extreme_errors)
+        else:
+            # Use torch.zeros to create a tensor that requires gradient
+            loss = torch.zeros(1, device=y_true.device, requires_grad=True)        
+            
+        return loss
