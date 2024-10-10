@@ -436,16 +436,16 @@ class MaskedQTLoss(BaseLoss):
         The desired quantile to focus on (e.g., 0.95 for the 95th quantile).
     """
 
-    def __init__(self, cfg: Config, quantile: float = 0.05):
+    def __init__(self, cfg: Config):
         super(MaskedQTLoss, self).__init__(cfg, prediction_keys=['y_hat'], ground_truth_keys=['y'])
-        assert 0 < quantile < 1, "Quantile should be between 0 and 1."
-        self.quantile = quantile
+        self._quantile = cfg.quantile
+        assert 0 < self._quantile < 1, "Quantile should be between 0 and 1."
 
     def _get_loss(self, prediction: Dict[str, torch.Tensor], ground_truth: Dict[str, torch.Tensor], **kwargs):
         mask = ~torch.isnan(ground_truth['y'])
         errors = ground_truth['y'][mask] - prediction['y_hat'][mask]
         # Calcul de la quantile loss
-        loss = torch.max((self.quantile - 1) * errors, self.quantile * errors)
+        loss = torch.max((self._quantile - 1) * errors, self._quantile * errors)
         return torch.mean(loss)
 
 

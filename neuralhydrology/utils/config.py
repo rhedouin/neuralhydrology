@@ -642,6 +642,10 @@ class Config(object):
     @property
     def predict_last_n(self) -> Union[int, Dict[str, int]]:
         return self._get_value_verbose("predict_last_n")
+    
+    @property
+    def quantile(self) -> float:
+        return self._cfg.get("quantile", 0.9)
 
     @property
     def random_holdout_from_dynamic_features(self) -> Dict[str, float]:
