@@ -8,6 +8,7 @@ from xarray.core.dataarray import DataArray
 
 from neuralhydrology.datautils import utils
 from neuralhydrology.utils.errors import AllNaNError
+from neuralhydrology.utils.config import Config
 
 LOGGER = logging.getLogger(__name__)
 
@@ -704,7 +705,7 @@ def missed_peaks(obs: DataArray,
     return missed_events / len(peaks_obs_times)
 
 
-def mean_absolute_percentage_peak_error(obs: DataArray, sim: DataArray) -> float:
+def mean_absolute_percentage_peak_error(obs: DataArray, sim: DataArray, cfg: Config) -> float:
     r"""Calculate the mean absolute percentage error (MAPE) for peaks
 
     .. math:: \text{MAPE}_\text{peak} = \frac{1}{P}\sum_{p=1}^{P} \left |\frac{Q_{s,p} - Q_{o,p}}{Q_{o,p}} \right | \times 100,
@@ -739,7 +740,7 @@ def mean_absolute_percentage_peak_error(obs: DataArray, sim: DataArray) -> float
         return np.nan
 
     # heuristic to get indices of peaks and their corresponding height.
-    peaks, _ = signal.find_peaks(obs.values, distance=100, prominence=np.std(obs.values))
+    peaks, _ = signal.find_peaks(obs.values, distance=cfg.peak_distance, prominence=np.std(obs.values))
 
     # check if any peaks exist, otherwise return np.nan
     if peaks.size == 0:
@@ -755,7 +756,7 @@ def mean_absolute_percentage_peak_error(obs: DataArray, sim: DataArray) -> float
     return peak_mape
 
 
-def mean_absolute_peak_error(obs: DataArray, sim: DataArray) -> float:
+def mean_absolute_peak_error(obs: DataArray, sim: DataArray, cfg: Config) -> float:
     r"""Calculate the mean absolute error (MAE) for peaks
 
     .. math:: \text{MAE}_\text{peak} = \frac{1}{P}\sum_{p=1}^{P} \left |Q_{s,p} - Q_{o,p}\right |,
@@ -790,7 +791,7 @@ def mean_absolute_peak_error(obs: DataArray, sim: DataArray) -> float:
         return np.nan
 
     # heuristic to get indices of peaks and their corresponding height.
-    peaks, _ = signal.find_peaks(obs.values, distance=100, prominence=np.std(obs.values))
+    peaks, _ = signal.find_peaks(obs.values, distance=cfg.peak_distance, prominence=np.std(obs.values))
 
     # check if any peaks exist, otherwise return np.nan
     if peaks.size == 0:
@@ -805,7 +806,7 @@ def mean_absolute_peak_error(obs: DataArray, sim: DataArray) -> float:
 
     return peak_mae
 
-def mean_peak_error(obs: DataArray, sim: DataArray) -> float:
+def mean_peak_error(obs: DataArray, sim: DataArray, cfg: Config) -> float:
     r"""Calculate the mean error (MAE) for peaks
 
     .. math:: \text{MAE}_\text{peak} = \frac{1}{P}\sum_{p=1}^{P} \left (Q_{s,p} - Q_{o,p}\right ),
@@ -840,7 +841,7 @@ def mean_peak_error(obs: DataArray, sim: DataArray) -> float:
         return np.nan
 
     # heuristic to get indices of peaks and their corresponding height.
-    peaks, _ = signal.find_peaks(obs.values, distance=100, prominence=np.std(obs.values))
+    peaks, _ = signal.find_peaks(obs.values, distance=cfg.peak_distance, prominence=np.std(obs.values))
 
     # check if any peaks exist, otherwise return np.nan
     if peaks.size == 0:
@@ -907,6 +908,7 @@ def calculate_all_metrics(obs: DataArray,
 
 def calculate_metrics(obs: DataArray,
                       sim: DataArray,
+                      cfg: Config,
                       metrics: List[str],
                       resolution: str = "1D",
                       datetime_coord: str = None) -> Dict[str, float]:
@@ -965,15 +967,15 @@ def calculate_metrics(obs: DataArray,
         elif metric.lower() == "flv":
             values["FLV"] = fdc_flv(obs, sim)
         elif metric.lower() == "peak-timing":
-            values["Peak-Timing"] = mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
+            values["Peak-Timing"] = mean_peak_timing(obs, sim, cfg, resolution=resolution, datetime_coord=datetime_coord)
         elif metric.lower() == "missed-peaks":
-            values["Missed-Peaks"] = missed_peaks(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
+            values["Missed-Peaks"] = missed_peaks(obs, sim, cfg, resolution=resolution, datetime_coord=datetime_coord)
         elif metric.lower() == "peak-mape":
-            values["Peak-MAPE"] = mean_absolute_percentage_peak_error(obs, sim)
+            values["Peak-MAPE"] = mean_absolute_percentage_peak_error(obs, sim, cfg)
         elif metric.lower() == "peak-mae":
-            values["Peak-MAE"] = mean_absolute_peak_error(obs, sim)
+            values["Peak-MAE"] = mean_absolute_peak_error(obs, sim, cfg)
         elif metric.lower() == "peak-me":
-            values["Peak-ME"] = mean_peak_error(obs, sim)
+            values["Peak-ME"] = mean_peak_error(obs, sim, cfg)
         else:
             raise RuntimeError(f"Unknown metric {metric}")
 

@@ -133,6 +133,7 @@ def _create_ensemble(results_files: List[Path], frequencies: List[str], config: 
                 try:
                     ensemble_metrics = calculate_metrics(ensemble_xr[f'{target_var}_obs'],
                                                          sim,
+                                                         config,
                                                          metrics=metrics,
                                                          resolution=freq)
                 except AllNaNError as err:

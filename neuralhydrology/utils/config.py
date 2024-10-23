@@ -626,6 +626,10 @@ class Config(object):
     @property
     def output_dropout(self) -> float:
         return self._cfg.get("output_dropout", 0.0)
+    
+    @property
+    def peak_distance(self) -> int:
+        return self._cfg.get("peak_distance", 100)
 
     @property
     def per_basin_test_periods_file(self) -> Path:

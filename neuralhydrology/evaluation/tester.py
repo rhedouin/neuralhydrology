@@ -310,7 +310,7 @@ class BaseTester(object):
                             if 'all' in var_metrics:
                                 var_metrics = get_available_metrics()
                             try:
-                                values = calculate_metrics(obs, sim, metrics=var_metrics, resolution=freq)
+                                values = calculate_metrics(obs, sim, self.cfg, metrics=var_metrics, resolution=freq)
                             except AllNaNError as err:
                                 msg = f'Basin {basin} ' \
                                     + (f'{target_variable} ' if len(self.cfg.target_variables) > 1 else '') \
