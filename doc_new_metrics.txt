@@ -1,7 +1,19 @@
-New metric for test and validation: Mean absolute peak error. Modification of the existing mean absolute percentage error (MAPE).
-create mean_absolute_peak_error in neuralhydrology/evaluation/metrics.py
+New metric for test and validation (i.e. you can specify theses metrics in the config file metrics:)
+Mean absolute peak error (MAE). Modification of the existing mean absolute percentage error (MAPE).
+mean_absolute_peak_error in neuralhydrology/evaluation/metrics.py
 
-New loss function: Peak Error Swish (PES) loss. New metric implemented from this paper https://www.sciencedirect.com/science/article/pii/S2095809922002806
+Mean peak error (ME). Modification of the existing mean absolute percentage error (MAPE).
+mean_peak_error in neuralhydrology/evaluation/metrics.py (This should be use thinking of all implication i.e. one + error add to one - error can give a null mean_error) 
+
+New loss function (i.e. you can specify theses loss functions in the config file loss:): 
+Peak Error Swish (pes) loss. New metric implemented from this paper https://www.sciencedirect.com/science/article/pii/S2095809922002806
 modify neuralhydrology/training/__init__.py
-create MaskedPESLoss in neuralhydrology/training/loss.py
+MaskedPESLoss in neuralhydrology/training/loss.py
 
+Quantil loss (qtloss) currently the best one. 
+MaskedQTLoss in neuralhydrology/training/loss.py
+It comes with an option to set the quantile value
+add quantile 0.9: in the config file (0.9 is the default value)
+
+Extreme value loss.
+MaskedEVLoss in neuralhydrology/training/loss.py
