@@ -23,7 +23,7 @@ def get_available_metrics() -> List[str]:
     """
     metrics = [
         "NSE", "MSE", "RMSE", "KGE", "Alpha-NSE", "Pearson-r", "Beta-KGE", "Beta-NSE", "FHV", "FMS", "FLV",
-        "Peak-Timing", "Missed-Peaks", "Peak-MAPE", "Peak-MAE", "Peak-ME"
+        "Peak-Timing", "Missed-Peaks", "Peak-MAPE", "Peak-MAE", "Peak-ME", 'Peak-NSE'
     ]
     return metrics
 
@@ -721,6 +721,7 @@ def mean_absolute_percentage_peak_error(obs: DataArray, sim: DataArray, cfg: Con
     ----------
     obs : DataArray
         Observed time series.
+        
     sim : DataArray
         Simulated time series.
 
@@ -856,6 +857,57 @@ def mean_peak_error(obs: DataArray, sim: DataArray, cfg: Config) -> float:
 
     return peak_mae
 
+def peak_nse(obs: DataArray, sim: DataArray, cfg: Config) -> float:
+    """
+    Calculate the NSE (Nash-Sutcliffe Efficiency) for peak flows only.
+
+    This metric evaluates NSE on the top `peak_fraction` of observed flows.
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed discharge.
+    sim : DataArray
+        Simulated discharge.
+    peak_fraction : float
+        Fraction (0 < peak_fraction < 1) of the top flows to consider as "floods".
+        Default is 0.1 (top 10%).
+
+    Returns
+    -------
+    float
+        Peak NSE score.
+    """
+    # Validate inputs
+    _validate_inputs(obs, sim)
+
+    # Mask invalid values
+    obs, sim = _mask_valid(obs, sim)
+
+    if obs.size == 0 or sim.size == 0:
+        return np.nan
+
+    # Sort observed values to find top X% indices
+    n_peaks = int(len(obs) * cfg.peak_fraction)
+
+    if n_peaks < 1:
+        return np.nan
+
+    # Get indices of the largest observed flows
+    top_indices = np.argsort(obs.values)[-n_peaks:]
+
+    obs_peaks = obs.values[top_indices]
+    sim_peaks = sim.values[top_indices]
+
+    # Compute NSE for just the peaks
+    numerator = np.sum((sim_peaks - obs_peaks) ** 2)
+    denominator = np.sum((obs_peaks - np.mean(obs_peaks)) ** 2)
+
+    if denominator == 0:
+        return np.nan  # avoid division by zero
+
+    return float(1 - numerator / denominator)
+
 def calculate_all_metrics(obs: DataArray,
                           sim: DataArray,
                           resolution: str = "1D",
@@ -900,7 +952,8 @@ def calculate_all_metrics(obs: DataArray,
         "Peak-Timing": mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord),
         "Peak-MAPE": mean_absolute_percentage_peak_error(obs, sim), 
         "Peak-MAE": mean_absolute_peak_error(obs, sim), 
-        "Peak-ME": mean_peak_error(obs, sim)
+        "Peak-ME": mean_peak_error(obs, sim), 
+        'Peak-NSE': peak_nse(obs, sim),
     }
 
     return results
@@ -976,6 +1029,8 @@ def calculate_metrics(obs: DataArray,
             values["Peak-MAE"] = mean_absolute_peak_error(obs, sim, cfg)
         elif metric.lower() == "peak-me":
             values["Peak-ME"] = mean_peak_error(obs, sim, cfg)
+        elif metric.lower() == "peak-nse":
+            values["Peak-NSE"] = peak_nse(obs, sim, cfg)
         else:
             raise RuntimeError(f"Unknown metric {metric}")
 

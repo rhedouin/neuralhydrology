@@ -632,6 +632,10 @@ class Config(object):
         return self._cfg.get("peak_distance", 100)
 
     @property
+    def peak_fraction(self) -> float:
+        return self._cfg.get("peak_fraction", 0.01)
+
+    @property
     def per_basin_test_periods_file(self) -> Path:
         return self._cfg.get("per_basin_test_periods_file", None)
 
