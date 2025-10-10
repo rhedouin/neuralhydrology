@@ -499,11 +499,17 @@ class BaseDataset(Dataset):
             pickle.dump(xr.to_dict(), fp)
 
     def _calculate_per_basin_std(self, xr: xarray.Dataset):
+        print("Calculating per-basin target variable standard deviations")
         basin_coordinates = xr["basin"].values.tolist()
         if not self._disable_pbar:
             LOGGER.info("Calculating target variable stds per basin")
         nan_basins = []
         for basin in tqdm(self.basins, file=sys.stdout, disable=self._disable_pbar):
+
+            # ✅ New: safely skip basins not found in the dataset
+            if basin not in basin_coordinates:
+                LOGGER.warning(f"Basin {basin} not found in xarray dataset — skipping for NSE std calculation.")
+                continue
 
             obs = xr.sel(basin=basin)[self.cfg.target_variables].to_array().values
             if np.sum(~np.isnan(obs)) > 1:

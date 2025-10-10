@@ -490,3 +490,50 @@ class MaskedEVLoss(BaseLoss):
             loss = torch.zeros(1, device=y_true.device, requires_grad=True)        
             
         return loss
+    
+class MaskedKGELoss(BaseLoss):
+    """Basin-averaged Kling–Gupta Efficiency (KGE) loss.
+
+    References:
+        Gupta et al. (2009): "Decomposition of the mean squared error and NSE performance criteria: 
+        Implications for improving hydrological modeling."
+    """
+
+    def __init__(self, cfg: Config, eps: float = 1e-6):
+        super(MaskedKGELoss, self).__init__(cfg,
+                                            prediction_keys=['y_hat'],
+                                            ground_truth_keys=['y'])
+        self.eps = eps
+
+    def _get_loss(self, prediction: Dict[str, torch.Tensor], ground_truth: Dict[str, torch.Tensor], **kwargs):
+        mask = ~torch.isnan(ground_truth['y'])
+        y_hat = prediction['y_hat'][mask]
+        y = ground_truth['y'][mask]
+
+        # mean and std
+        mean_y = torch.mean(y)
+        mean_y_hat = torch.mean(y_hat)
+        std_y = torch.std(y)
+        std_y_hat = torch.std(y_hat)
+
+        # correlation
+        r_num = torch.sum((y_hat - mean_y_hat) * (y - mean_y))
+        r_den = (torch.sqrt(torch.sum((y_hat - mean_y_hat)**2)) * 
+                 torch.sqrt(torch.sum((y - mean_y)**2)) + self.eps)
+        r = r_num / r_den
+
+        # components of KGE
+        beta = mean_y_hat / (mean_y + self.eps)        # bias ratio
+        gamma = (std_y_hat / (std_y + self.eps))       # variability ratio
+
+        # Kling–Gupta Efficiency
+        kge = 1 - torch.sqrt((r - 1)**2 + (beta - 1)**2 + (gamma - 1)**2)
+
+        # Loss = 1 - KGE (so higher KGE → lower loss)
+        loss = 1 - kge
+        return loss
+
+    @staticmethod
+    def _subset_additional_data(additional_data: Dict[str, torch.Tensor], n_target: int) -> Dict[str, torch.Tensor]:
+        # No additional data needed for KGE
+        return {}

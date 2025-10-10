@@ -75,6 +75,8 @@ def get_loss_obj(cfg: Config) -> loss.BaseLoss:
         loss_obj = loss.MaskedQTLoss(cfg)
     elif cfg.loss.lower() == "evloss":
         loss_obj = loss.MaskedEVLoss(cfg)
+    elif cfg.loss.lower() == "kge":
+        loss_obj = loss.MaskedKGELoss(cfg)
     else:
         raise NotImplementedError(f"{cfg.loss} not implemented or not linked in `get_loss()`")
 
